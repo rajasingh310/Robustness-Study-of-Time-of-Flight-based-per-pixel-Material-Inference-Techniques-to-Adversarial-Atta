@@ -63,15 +63,21 @@ class ToFpix2pixDataset(BaseDataset):
         
         '''
 
-        self.generator_input_path = os.path.join(opt.dataroot, 'A', opt.phase)  # for generator input
-        self.discriminator_input_path = os.path.join(opt.dataroot, 'B', opt.phase)    # for discriminator input
-        self.generator_input_non_normalized_path = os.path.join(opt.dataroot, 'C', opt.phase)  # for visualization of the generator input image
-        self.labels_path = os.path.join(opt.dataroot, 'D', opt.phase)    # for verifying the quality of the model
+        self.A_path = os.path.join(opt.dataroot, 'A', opt.phase)  # for generator input
+        self.B_path = os.path.join(opt.dataroot, 'B', opt.phase)    # for discriminator input
+        self.C_path = os.path.join(opt.dataroot, 'C', opt.phase)  # for visualization of the generator input image
+        self.D_path = os.path.join(opt.dataroot, 'D', opt.phase)    # for verifying the quality of the model
 
-        self.gen_paths = sorted(make_dataset(self.generator_input_path, opt.max_dataset_size))
-        self.disc_paths = sorted(make_dataset(self.discriminator_input_path, opt.max_dataset_size))
-        self.gen_non_normalized_paths = sorted(make_dataset(self.generator_input_non_normalized_path, opt.max_dataset_size))
-        self.labels_paths = sorted(make_dataset(self.labels_path, opt.max_dataset_size))
+        self.A_paths = sorted(make_dataset(self.A_path, opt.max_dataset_size))
+        self.B_paths = sorted(make_dataset(self.B_path, opt.max_dataset_size))
+        self.C_paths = sorted(make_dataset(self.C_path, opt.max_dataset_size))
+        self.D_paths = sorted(make_dataset(self.D_path, opt.max_dataset_size))
+
+        if opt.direction == 'BtoA':
+            self.A_paths, self.B_paths = self.B_paths, self.A_paths
+            opt.input_nc, opt.output_nc = opt.output_nc, opt.input_nc
+
+        opt.G_input_shape = np.array(tiff.imread(self.A_paths[0])).shape
 
 
     def __getitem__(self, index):
@@ -89,13 +95,17 @@ class ToFpix2pixDataset(BaseDataset):
         Step 4: return a data point as a dictionary.
         """
 
-        data_A = np.array(tiff.imread(self.gen_paths[index]))    # needs to be a tensor
-        data_B = np.array(tiff.imread(self.disc_paths[index]))    # needs to be a tensor
-        data_C = np.array(tiff.imread(self.gen_non_normalized_paths[index]))    # needs to be a tensor
-        data_D = np.array(tiff.imread(self.labels_paths[index]))    # needs to be a tensor
+        data_A = np.array(tiff.imread(self.A_paths[index]))    # needs to be a tensor
+        data_B = np.array(tiff.imread(self.B_paths[index]))    # needs to be a tensor
+        data_C = np.array(tiff.imread(self.C_paths[index]))    # needs to be a tensor
+        data_D = np.array(tiff.imread(self.D_paths[index]))    # needs to be a tensor
+        
+        data_A = data_A[np.newaxis, ...]
+        data_C = data_C[np.newaxis, ...]
+        data_D = data_D[np.newaxis, ...]
 
-        return {'A': data_A, 'B': data_B, 'C': data_C, 'D': data_D, 'A_paths': self.gen_paths[index], 'B_paths': self.disc_paths[index]}
+        return {'A': data_A, 'B': data_B, 'C': data_C, 'D': data_D, 'A_paths': self.A_paths[index], 'B_paths': self.B_paths[index]}
 
     def __len__(self):
         """Return the total number of images."""
-        return len(self.gen_paths)
+        return len(self.A_paths)

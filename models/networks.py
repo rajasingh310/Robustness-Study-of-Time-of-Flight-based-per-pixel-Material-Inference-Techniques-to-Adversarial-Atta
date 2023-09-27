@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
+import math
 
 
 ###############################################################################
@@ -116,8 +117,20 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
     init_weights(net, init_type, init_gain=init_gain)
     return net
 
+def num_blocks(input_shape):
+    stride = 2
+    padding = 1
+    filter = 4
 
-def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[]):
+    input_dim = min(input_shape[-2:])
+    n_blocks = 0
+    while input_dim > 1:
+        input_dim = math.floor(((input_dim + 2 * padding - filter) / stride ) + 1)
+        n_blocks += 1
+
+    return n_blocks
+
+def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[], G_input_shape=(1, 256, 256)):
     """Create a generator
 
     Parameters:
@@ -154,7 +167,8 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
     elif netG == 'unet_128':
         net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
     elif netG == 'unet_256':
-        net = UnetGenerator(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
+        n_blocks = num_blocks(G_input_shape)
+        net = UnetGenerator(input_nc, output_nc, n_blocks, ngf, norm_layer=norm_layer, use_dropout=use_dropout)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu_ids)
@@ -506,7 +520,7 @@ class UnetSkipConnectionBlock(nn.Module):
                                         kernel_size=4, stride=2,
                                         padding=1)
             down = [downconv]
-            up = [uprelu, upconv, nn.Tanh()]
+            up = [uprelu, upconv] # changed the output activation layer with leaky relu from tanh up = [uprelu, upconv, nn.LeakyReLU(0.2)]
             model = down + [submodule] + up
         elif innermost:
             upconv = nn.ConvTranspose2d(inner_nc, outer_nc,
@@ -533,7 +547,10 @@ class UnetSkipConnectionBlock(nn.Module):
         if self.outermost:
             return self.model(x)
         else:   # add skip connections
-            return torch.cat([x, self.model(x)], 1)
+            x_T = self.model(x)
+            pad_value = (0, x.shape[3] - x_T.shape[3], 0, x.shape[2] - x_T.shape[2])
+            x_T_pad = nn.functional.pad(x_T, pad_value, "reflect")
+            return torch.cat([x, x_T_pad], 1)
 
 
 class NLayerDiscriminator(nn.Module):
