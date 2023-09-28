@@ -601,7 +601,10 @@ class UnetVersSkipConnectionBlock(UnetSkipConnectionBlock, nn.Module):
 
     def forward(self, x):
         if self.outermost:
-            return self.model(x)
+            x_ConvT = self.model(x)
+            pad_value = (0, x.shape[-1] - x_ConvT.shape[-1], 0, x.shape[-2] - x_ConvT.shape[-2])
+            x_ConvT_pad = nn.functional.pad(x_ConvT, pad_value, "reflect")
+            return x_ConvT_pad
         else:   # add versatile skip connections
             x_ConvT = self.model(x)
             pad_value = (0, x.shape[-1] - x_ConvT.shape[-1], 0, x.shape[-2] - x_ConvT.shape[-2])
