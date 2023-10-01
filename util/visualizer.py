@@ -147,15 +147,17 @@ class Visualizer():
 
                 images_label = list(self.vis_tof_imgs)
 
+                win_name = self.opt.dataset_mode + self.opt.netG + 'batch_size' + str(self.opt.batch_size)
+
                 if 'I' in images_label:
-                    self.vis.image(visuals['real_C'][0, ...], win='amp_img', opts={'store_history': True, 'title': 'Amplitude image'})
+                    self.vis.image(visuals['real_C'][0, ...], win= 'amp_img' + win_name, opts={'store_history': True, 'title': 'Amplitude image'})
                     
                 if 'L' in images_label:
                     rgb_data = np.squeeze(self.cmap(self.norm(visuals['real_D'][0, ...].to('cpu').numpy())))
                     rgb_data = np.transpose(rgb_data, (2, 0, 1))
                     rgb_data = rgb_data[:3, ...]
 
-                    self.vis.image(rgb_data, win='labels', opts={'store_history': True, 'title': 'True labels'})
+                    self.vis.image(rgb_data, win='labels' + win_name, opts={'store_history': True, 'title': 'True labels'})
 
                 if 'R' in images_label:
                     pred_image = tof_util.MaterialDetect(visuals['real_B'][0, ...], self.mat_classifier)
@@ -165,7 +167,7 @@ class Visualizer():
                     rgb_data = np.transpose(rgb_data, (2, 0, 1))
                     rgb_data = rgb_data[:3, ...]
 
-                    self.vis.image(rgb_data, win='real_labels', opts={'store_history': True, 'title': 'Real image labels'})
+                    self.vis.image(rgb_data, win='real_labels' + win_name, opts={'store_history': True, 'title': 'Real image labels'})
 
                 if 'F' in images_label:
                     pred_image = tof_util.MaterialDetect(visuals['fake_B'][0, ...], self.mat_classifier)
@@ -175,7 +177,7 @@ class Visualizer():
                     rgb_data = np.transpose(rgb_data, (2, 0, 1))
                     rgb_data = rgb_data[:3, ...]
 
-                    self.vis.image(rgb_data, win='fake_labels', opts={'store_history': True, 'title': 'Fake image labels'})
+                    self.vis.image(rgb_data, win='fake_labels' + win_name, opts={'store_history': True, 'title': 'Fake image labels'})
 
             else:
 
