@@ -1,11 +1,11 @@
 """General-purpose training script for image-to-image translation.
 
 This script works for various models (with option '--model': e.g., pix2pix, cyclegan, colorization) and
-different datasets (with option '--dataset_mode': e.g., aligned, unaligned, single, colorization).
+different datasets (with option '--dataset_mode': e.g., aligned, unaligned, single, colorization, tof_pix2pix).
 You need to specify the dataset ('--dataroot'), experiment name ('--name'), and model ('--model').
 
 It first creates model, dataset, and visualizer given the option.
-It then does standard network training. During the training, it also visualize/save the images, print/save the loss plot, and save models.
+It then does standard network training. During the training, it also visualize/save the images if options are switched ON, print/save the loss plot, and save models.
 The script supports continue/resume training. Use '--continue_train' to resume your previous training.
 
 Example:
@@ -18,6 +18,7 @@ See options/base_options.py and options/train_options.py for more training optio
 See training and test tips at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/tips.md
 See frequently asked questions at: https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/docs/qa.md
 """
+
 import time
 from options.train_options import TrainOptions
 from data import create_dataset
@@ -26,20 +27,25 @@ from util.visualizer import Visualizer
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
+
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     dataset_size = len(dataset)    # get the number of images in the dataset.
     print('The number of training images = %d' % dataset_size)
 
     model = create_model(opt)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
+
     visualizer = Visualizer(opt)   # create a visualizer that display/save images and plots
+
     total_iters = 0                # the total number of training iterations
 
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()    # timer for data loading per iteration
         epoch_iter = 0                  # the number of training iterations in current epoch, reset to 0 every epoch
+
         visualizer.reset()              # reset the visualizer: make sure it saves the results to HTML at least once every epoch
+
         model.update_learning_rate()    # update learning rates in the beginning of every epoch.
         for i, data in enumerate(dataset):  # inner loop within one epoch
             iter_start_time = time.time()  # timer for computation per iteration

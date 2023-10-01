@@ -19,6 +19,10 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--update_html_freq', type=int, default=1000, help='frequency of saving training results to html')
         parser.add_argument('--print_freq', type=int, default=100, help='frequency of showing training results on console')
         parser.add_argument('--no_html', action='store_true', help='do not save intermediate training results to [opt.checkpoints_dir]/[opt.name]/web/')
+
+        parser.add_argument('--vis_tof_imgs_ON', type=bool, default=False, help='If True, then visualize ToF images on visdom server')
+        parser.add_argument('--vis_tof_imgs', type=str, default='I,L,R,F', help='list of ToF images to visualize on visdom server. I for Input, L for label, R for Real, F for Generated Fake.')
+
         # network saving and loading parameters
         parser.add_argument('--save_latest_freq', type=int, default=5000, help='frequency of saving the latest results')
         parser.add_argument('--save_epoch_freq', type=int, default=5, help='frequency of saving checkpoints at the end of epochs')

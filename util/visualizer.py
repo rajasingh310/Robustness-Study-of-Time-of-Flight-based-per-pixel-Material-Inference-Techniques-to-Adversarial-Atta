@@ -3,9 +3,9 @@ import os
 import sys
 import ntpath
 import time
-from . import util, html
+from . import util, html, tof_util
 from subprocess import Popen, PIPE
-
+import torch
 
 try:
     import wandb
@@ -79,6 +79,8 @@ class Visualizer():
         self.wandb_project_name = opt.wandb_project_name
         self.current_epoch = 0
         self.ncols = opt.display_ncols
+        self.vis_tof_imgs_ON = opt.vis_tof_imgs_ON
+        self.vis_tof_imgs = opt.vis_tof_imgs 
 
         if self.display_id > 0:  # connect to a visdom server given <display_port> and <display_server>
             import visdom
@@ -101,6 +103,22 @@ class Visualizer():
             now = time.strftime("%c")
             log_file.write('================ Training Loss (%s) ================\n' % now)
 
+        if self.vis_tof_imgs_ON:
+            from matplotlib.colors import ListedColormap, Normalize
+
+            # Define your list of 15 colors
+            colors = ['blue', 'yellow', 'red', 'green', 'purple', 'orange', 'cyan', 'pink', 'brown', 'gray', 'lime', 'teal',
+                    'magenta', 'navy', 'olive']
+
+            # Create a colormap using the ListedColormap
+            self.cmap = ListedColormap(colors)
+            self.norm = Normalize(vmin=0, vmax=15)
+
+            self.mat_classifier = tof_util.MaterialDetectionModel(num_materials=5).to('cuda')
+            trained_model = torch.load("/home/ads/g050939/Downloads/mr_singh_thesis/pytorch-CycleGAN-and-pix2pix/util/mat_detect_2d_model.pth")
+            self.mat_classifier.load_state_dict(trained_model)
+            self.mat_classifier.eval()
+
     def reset(self):
         """Reset the self.saved status"""
         self.saved = False
@@ -113,6 +131,8 @@ class Visualizer():
         Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
 
     def display_current_results(self, visuals, epoch, save_result):
+
+        
         """Display current results on visdom; save current results to an HTML file.
 
         Parameters:
@@ -121,54 +141,92 @@ class Visualizer():
             save_result (bool) - - if save the current results to an HTML file
         """
         if self.display_id > 0:  # show images in the browser using visdom
-            ncols = self.ncols
-            if ncols > 0:        # show all the images in one visdom panel
-                ncols = min(ncols, len(visuals))
-                h, w = next(iter(visuals.values())).shape[:2]
-                table_css = """<style>
-                        table {border-collapse: separate; border-spacing: 4px; white-space: nowrap; text-align: center}
-                        table td {width: % dpx; height: % dpx; padding: 4px; outline: 4px solid black}
-                        </style>""" % (w, h)  # create a table css
-                # create a table of images.
-                title = self.name
-                label_html = ''
-                label_html_row = ''
-                images = []
-                idx = 0
-                for label, image in visuals.items():
-                    image_numpy = util.tensor2im(image)
-                    label_html_row += '<td>%s</td>' % label
-                    images.append(image_numpy.transpose([2, 0, 1]))
-                    idx += 1
-                    if idx % ncols == 0:
-                        label_html += '<tr>%s</tr>' % label_html_row
-                        label_html_row = ''
-                white_image = np.ones_like(image_numpy.transpose([2, 0, 1])) * 255
-                while idx % ncols != 0:
-                    images.append(white_image)
-                    label_html_row += '<td></td>'
-                    idx += 1
-                if label_html_row != '':
-                    label_html += '<tr>%s</tr>' % label_html_row
-                try:
-                    self.vis.images(images, nrow=ncols, win=self.display_id + 1,
-                                    padding=2, opts=dict(title=title + ' images'))
-                    label_html = '<table>%s</table>' % label_html
-                    self.vis.text(table_css + label_html, win=self.display_id + 2,
-                                  opts=dict(title=title + ' labels'))
-                except VisdomExceptionBase:
-                    self.create_visdom_connections()
 
-            else:     # show each image in a separate visdom panel;
-                idx = 1
-                try:
+
+            if self.vis_tof_imgs_ON:
+
+                images_label = list(self.vis_tof_imgs)
+
+                if 'I' in images_label:
+                    self.vis.image(visuals['real_C'][0, ...], win=self.display_id + 2, opts={'store_history': True, 'title': 'Amplitude image'})
+                    
+                if 'L' in images_label:
+                    rgb_data = np.squeeze(self.cmap(self.norm(visuals['real_D'][0, ...].to('cpu').numpy())))
+                    rgb_data = np.transpose(rgb_data, (2, 0, 1))
+                    rgb_data = rgb_data[:3, ...]
+
+                    self.vis.image(rgb_data, win=self.display_id + 3, opts={'store_history': True, 'title': 'True labels'})
+
+                if 'R' in images_label:
+                    pred_image = tof_util.MaterialDetect(visuals['real_B'][0, ...], self.mat_classifier)
+                    image = pred_image.preds.unsqueeze(0).to('cpu').numpy()
+
+                    rgb_data = np.squeeze(self.cmap(self.norm(image)))
+                    rgb_data = np.transpose(rgb_data, (2, 0, 1))
+                    rgb_data = rgb_data[:3, ...]
+
+                    self.vis.image(rgb_data, win=self.display_id + 4, opts={'store_history': True, 'title': 'Real image labels'})
+
+                if 'F' in images_label:
+                    pred_image = tof_util.MaterialDetect(visuals['fake_B'][0, ...], self.mat_classifier)
+                    image = pred_image.preds.unsqueeze(0).to('cpu').numpy()
+
+                    rgb_data = np.squeeze(self.cmap(self.norm(image)))
+                    rgb_data = np.transpose(rgb_data, (2, 0, 1))
+                    rgb_data = rgb_data[:3, ...]
+
+                    self.vis.image(rgb_data, win=self.display_id + 5, opts={'store_history': True, 'title': 'Fake image labels'})
+
+            else:
+
+                ncols = self.ncols
+                if ncols > 0:        # show all the images in one visdom panel
+                    ncols = min(ncols, len(visuals))
+                    h, w = next(iter(visuals.values())).shape[:2]
+                    table_css = """<style>
+                            table {border-collapse: separate; border-spacing: 4px; white-space: nowrap; text-align: center}
+                            table td {width: % dpx; height: % dpx; padding: 4px; outline: 4px solid black}
+                            </style>""" % (w, h)  # create a table css
+                    # create a table of images.
+                    title = self.name
+                    label_html = ''
+                    label_html_row = ''
+                    images = []
+                    idx = 0
                     for label, image in visuals.items():
                         image_numpy = util.tensor2im(image)
-                        self.vis.image(image_numpy.transpose([2, 0, 1]), opts=dict(title=label),
-                                       win=self.display_id + idx)
+                        label_html_row += '<td>%s</td>' % label
+                        images.append(image_numpy.transpose([2, 0, 1]))
                         idx += 1
-                except VisdomExceptionBase:
-                    self.create_visdom_connections()
+                        if idx % ncols == 0:
+                            label_html += '<tr>%s</tr>' % label_html_row
+                            label_html_row = ''
+                    white_image = np.ones_like(image_numpy.transpose([2, 0, 1])) * 255
+                    while idx % ncols != 0:
+                        images.append(white_image)
+                        label_html_row += '<td></td>'
+                        idx += 1
+                    if label_html_row != '':
+                        label_html += '<tr>%s</tr>' % label_html_row
+                    try:
+                        self.vis.images(images, nrow=ncols, win=self.display_id + 1,
+                                        padding=2, opts=dict(title=title + ' images'))
+                        label_html = '<table>%s</table>' % label_html
+                        self.vis.text(table_css + label_html, win=self.display_id + 2,
+                                    opts=dict(title=title + ' labels'))
+                    except VisdomExceptionBase:
+                        self.create_visdom_connections()
+
+                else:     # show each image in a separate visdom panel;
+                    idx = 1
+                    try:
+                        for label, image in visuals.items():
+                            image_numpy = util.tensor2im(image)
+                            self.vis.image(image_numpy.transpose([2, 0, 1]), opts=dict(title=label),
+                                        win=self.display_id + idx)
+                            idx += 1
+                    except VisdomExceptionBase:
+                        self.create_visdom_connections()
 
         if self.use_wandb:
             columns = [key for key, _ in visuals.items()]

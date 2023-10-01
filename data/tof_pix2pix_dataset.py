@@ -74,7 +74,6 @@ class ToFpix2pixDataset(BaseDataset):
         self.D_paths = sorted(make_dataset(self.D_path, opt.max_dataset_size))
 
         if opt.direction == 'BtoA':
-            self.A_paths, self.B_paths = self.B_paths, self.A_paths
             opt.input_nc, opt.output_nc = opt.output_nc, opt.input_nc
 
         opt.G_input_shape = np.array(tiff.imread(self.A_paths[0])).shape
