@@ -150,7 +150,7 @@ class Visualizer():
                 win_name = self.opt.dataset_mode + self.opt.netG + 'batch_size' + str(self.opt.batch_size)
 
                 if 'I' in images_label:
-                    self.vis.image(visuals['real_C'][0, ...], win= 'amp_img' + win_name, opts={'store_history': True, 'title': 'Amplitude image'})
+                    self.vis.image(visuals['real_C'][0, ...], win='amp_img' + win_name, opts={'store_history': True, 'title': 'Amplitude image'})
                     
                 if 'L' in images_label:
                     rgb_data = np.squeeze(self.cmap(self.norm(visuals['real_D'][0, ...].to('cpu').numpy())))

@@ -46,3 +46,4 @@ test/data/legacy_serialized.pt
 wandb/
 .vscode
 a.py
+tof_results

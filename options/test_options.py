@@ -15,6 +15,9 @@ class TestOptions(BaseOptions):
         # Dropout and Batchnorm has different behavioir during training and test.
         parser.add_argument('--eval', action='store_true', help='use eval mode during test time.')
         parser.add_argument('--num_test', type=int, default=50, help='how many test images to run')
+
+        parser.add_argument('--vis_tof_imgs_ON', type=bool, default=False, help='If True, then visualize ToF images on visdom server')
+        parser.add_argument('--vis_tof_imgs', type=str, default='I,L,R,F', help='list of ToF images to visualize on visdom server. I for Input, L for label, R for Real, F for Generated Fake.')
         # rewrite devalue values
         parser.set_defaults(model='test')
         # To avoid cropping, the load_size should be the same as crop_size
