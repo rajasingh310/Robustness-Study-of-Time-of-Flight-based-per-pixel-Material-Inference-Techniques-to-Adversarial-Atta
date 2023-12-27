@@ -94,8 +94,11 @@ class ToFImagePreProcessing():
 
         self.window_images = slide_window(image)
 
+        dataset_dir = "dataset_3"
+        path_pre_trained_classifier_and_std_dev = "/home/ads/g050939/Downloads/mr_singh_thesis/pytorch-CycleGAN-and-pix2pix/util/tof_pre_trained_model_and_std_dev/"
+
         std_dev1 = 7.5
-        std_dev2 = torch.load("/home/ads/g050939/Downloads/mr_singh_thesis/pytorch-CycleGAN-and-pix2pix/util/std_dev.pth")
+        std_dev2 = torch.load(path_pre_trained_classifier_and_std_dev + dataset_dir + "/std_dev.pth")
         self.bilateral_images = image_filtering(self.window_images, std_dev1, std_dev2)    # bilateral filtering
 
         self.knn = k_nearest_neighbor(self.window_images, self.bilateral_images , 9)   

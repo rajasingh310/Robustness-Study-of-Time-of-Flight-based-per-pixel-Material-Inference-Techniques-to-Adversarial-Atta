@@ -1,3 +1,25 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 """General-purpose test script for image-to-image translation.
 
 Once you have trained your model with train.py, you can use this script to test the model.
@@ -48,104 +70,125 @@ if __name__ == '__main__':
     opt.no_flip = True    # no flip; comment this line if results on flipped images are needed.
     opt.display_id = -1   # no visdom display; the test code saves the results to a HTML file.
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
-    model = create_model(opt)      # create a model given opt.model and other options
-    model.setup(opt)               # regular setup: load and print networks; create schedulers
+    
+    for j in range(1, 4 + 1):
+        opt.epoch = 50 * j
+        model = create_model(opt)      # create a model given opt.model and other options
+        model.setup(opt)               # regular setup: load and print networks; create schedulers
 
-    if opt.eval:
-        model.eval()
+        if opt.eval:
+            model.eval()
 
-    g_input = []
-    true_labels = []
-    real = []
-    fake = []
-    for i, data in enumerate(dataset):
-        model.set_input(data)  # unpack data from data loader
-        model.test()           # run inference
+        #g_input = []
+        true_labels = []
+        #real = []
+        fake = []
+        for i, data in enumerate(dataset):
+            model.set_input(data)  # unpack data from data loader
+            model.test()           # run inference
 
-        g_input.append(torch.squeeze(model.real_C))
-        true_labels.append(torch.squeeze(model.real_D))
-        real.append(torch.squeeze(model.real_B))
-        fake.append(torch.squeeze(model.fake_B))
+            #g_input.append(torch.squeeze(model.real_C))
+            true_labels.append(torch.squeeze(model.real_D))
+            #real.append(torch.squeeze(model.real_B))
+            fake.append(torch.squeeze(model.fake_B))
 
-    g_input = torch.stack(g_input, dim=0)
-    true_labels = torch.stack(true_labels, dim=0)
-    real = torch.stack(real, dim=0)
-    fake = torch.stack(fake, dim=0)
-
-
-    if opt.vis_tof_imgs_ON:
-        from matplotlib.colors import ListedColormap, Normalize
-
-        # Define your list of 15 colors
-        colors = ['blue', 'yellow', 'red', 'green', 'purple', 'orange', 'cyan', 'pink', 'brown', 'gray', 'lime', 'teal',
-                'magenta', 'navy', 'olive']
-
-        # Create a colormap using the ListedColormap
-        cmap = ListedColormap(colors)
-        norm = Normalize(vmin=0, vmax=15)
-
-        mat_classifier = tof_util.MaterialDetectionModel(num_materials=5).to('cuda')
-        trained_model = torch.load("/home/ads/g050939/Downloads/mr_singh_thesis/pytorch-CycleGAN-and-pix2pix/util/mat_detect_2d_model.pth")
-        mat_classifier.load_state_dict(trained_model)
-        mat_classifier.eval()
-
-        directory = 'tof_results'
-        parent = '/home/ads/g050939/Downloads/mr_singh_thesis/pytorch-CycleGAN-and-pix2pix'
-
-        path = os.path.join(parent, directory)
-
-        if not os.path.exists(path):
-            os.mkdir(path)
-        
-        for i in range(len(real)):
-
-            # save the 2d image
-            fig, ax = plt.subplots()
-            ax.imshow(g_input[i, ...].to('cpu').numpy(), cmap='gray')
-            ax.axis('off')
-            ax.set_xticklabels([])
-            ax.set_yticklabels([])
-            plt.savefig(path + '/g_input_' + str(i) + '.pdf', dpi=600, bbox_inches='tight', pad_inches=0)
-            plt.close()
-
-            image = true_labels[i, ...].to('cpu').numpy()
-            rgb_data = np.squeeze(cmap(norm(image)))
-
-            # save the 2d image
-            fig, ax = plt.subplots()
-            ax.imshow(rgb_data, cmap=cmap)
-            ax.axis('off')
-            ax.set_xticklabels([])
-            ax.set_yticklabels([])
-            plt.savefig(path + '/true_labels_' + str(i) + '.pdf', dpi=600, bbox_inches='tight', pad_inches=0)
-            plt.close()
+        #g_input = torch.stack(g_input, dim=0)
+        true_labels = torch.stack(true_labels, dim=0)
+        #real = torch.stack(real, dim=0)
+        fake = torch.stack(fake, dim=0)
 
 
-            pred_real = tof_util.MaterialDetect(real[i, ...].to('cuda'), mat_classifier)
-            image = pred_real.preds.unsqueeze(0).to('cpu').numpy()
-            rgb_data = np.squeeze(cmap(norm(image)))
+        if opt.vis_tof_imgs_ON:
+            #from matplotlib.colors import ListedColormap, Normalize
 
-            # save the 2d image
-            fig, ax = plt.subplots()
-            ax.imshow(rgb_data, cmap=cmap)
-            ax.axis('off')
-            ax.set_xticklabels([])
-            ax.set_yticklabels([])
-            plt.savefig(path + '/real_labels_' + str(i) + '.pdf', dpi=600, bbox_inches='tight', pad_inches=0)
-            plt.close()
+            # Define your list of 15 colors
+            #colors = ['blue', 'yellow', 'red', 'green', 'purple', 'orange', 'cyan', 'pink', 'brown', 'gray', 'lime', 'teal',
+            #        'magenta', 'navy', 'olive']
 
-            pred_fake = tof_util.MaterialDetect(fake[i, ...].to('cuda'), mat_classifier)
-            image = pred_fake.preds.unsqueeze(0).to('cpu').numpy()
-            rgb_data = np.squeeze(cmap(norm(image)))
+            # Create a colormap using the ListedColormap
+            #cmap = ListedColormap(colors)
+            #norm = Normalize(vmin=0, vmax=15)
 
-            # save the 2d image
-            fig, ax = plt.subplots()
-            ax.imshow(rgb_data, cmap=cmap)
-            ax.axis('off')
-            ax.set_xticklabels([])
-            ax.set_yticklabels([])
-            plt.savefig(path + '/fake_labels_' + str(i) + '.pdf', dpi=600, bbox_inches='tight', pad_inches=0)
-            plt.close()
+            mat_classifier = tof_util.MaterialDetectionModel(num_materials=5).to('cuda')
+            trained_model = torch.load("/home/ads/g050939/Downloads/mr_singh_thesis/pytorch-CycleGAN-and-pix2pix/util/tof_pre_trained_model_and_std_dev/dataset_3/mat_detect_2d_model.pth")
+            mat_classifier.load_state_dict(trained_model)
+            mat_classifier.eval()
+
+            #directory = 'tof_results'
+            #parent = '/home/ads/g050939/Downloads/mr_singh_thesis/pytorch-CycleGAN-and-pix2pix'
+
+            #path = os.path.join(parent, directory)
+
+            #if not os.path.exists(path):
+            #    os.mkdir(path)
+
+            accuracy = []
+
+            from itertools import chain
+            y = []
+            y_p = []
+            
+            for i in range(len(fake)):
+
+                # save the 2d image
+                #fig, ax = plt.subplots()
+                #ax.imshow(g_input[i, ...].to('cpu').numpy(), cmap='gray')
+                #ax.axis('off')
+                #ax.set_xticklabels([])
+                #ax.set_yticklabels([])
+                #plt.savefig(path + '/g_input_' + str(i) + '.pdf', dpi=600, bbox_inches='tight', pad_inches=0)
+                #plt.close()
+
+                #image = true_labels[i, ...].to('cpu').numpy()
+                #rgb_data = np.squeeze(cmap(norm(image)))
+
+                # save the 2d image
+                #fig, ax = plt.subplots()
+                #ax.imshow(rgb_data, cmap=cmap)
+                #ax.axis('off')
+                #ax.set_xticklabels([])
+                #ax.set_yticklabels([])
+                #plt.savefig(path + '/true_labels_' + str(i) + '.pdf', dpi=600, bbox_inches='tight', pad_inches=0)
+                #plt.close()
+
+
+                #pred_real = tof_util.MaterialDetect(real[i, ...].to('cuda'), mat_classifier)
+                #image = pred_real.preds.unsqueeze(0).to('cpu').numpy()
+                #rgb_data = np.squeeze(cmap(norm(image)))
+
+                # save the 2d image
+                #fig, ax = plt.subplots()
+                #ax.imshow(rgb_data, cmap=cmap)
+                #ax.axis('off')
+                #ax.set_xticklabels([])
+                #ax.set_yticklabels([])
+                #plt.savefig(path + '/real_labels_' + str(i) + '.pdf', dpi=600, bbox_inches='tight', pad_inches=0)
+                #plt.close()
+
+                pred_fake = tof_util.MaterialDetect(fake[i, ...].to('cuda'), mat_classifier)
+                image = pred_fake.preds.unsqueeze(0).to('cpu').numpy()
+                #rgb_data = np.squeeze(cmap(norm(image)))
+
+                # save the 2d image
+                #fig, ax = plt.subplots()
+                #ax.imshow(rgb_data, cmap=cmap)
+                #ax.axis('off')
+                #ax.set_xticklabels([])
+                #ax.set_yticklabels([])
+                #plt.savefig(path + '/fake_labels_' + str(i) + '.pdf', dpi=600, bbox_inches='tight', pad_inches=0)
+                #plt.close()
+
+                targets = true_labels[i, ...].reshape(-1).tolist()
+                preds = image.reshape(-1).tolist()
+
+                y.append(targets)
+                y_p.append(preds)
+                
+            y = list(chain.from_iterable(y))
+            y_p = list(chain.from_iterable(y_p))
+
+            accuracy.append((sum(1 for true, pred in zip(y, y_p) if true == pred) / len(y)) * 100)
+
+            print('Epoch', 50 * j, (sum(1 for true, pred in zip(y, y_p) if true == pred) / len(y)) * 100)
                 
     pass
-

@@ -519,7 +519,7 @@ class UnetSkipConnectionBlock(nn.Module):
         upnorm = norm_layer(outer_nc)
 
         if outermost:
-            upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,  
+            upconv = nn.ConvTranspose2d(inner_nc * 2, outer_nc,
                                         kernel_size=4, stride=2,
                                         padding=1)
             down = [downconv]
@@ -609,7 +609,7 @@ class UnetVersSkipConnectionBlock(UnetSkipConnectionBlock, nn.Module):
             x_ConvT = self.model(x)
             pad_value = (0, x.shape[-1] - x_ConvT.shape[-1], 0, x.shape[-2] - x_ConvT.shape[-2])
             x_ConvT_pad = nn.functional.pad(x_ConvT, pad_value, "reflect")
-            return torch.cat([x, x_ConvT_pad], 1)
+            return torch.cat((x, x_ConvT_pad), 1)
 
 
 class NLayerDiscriminator(nn.Module):
